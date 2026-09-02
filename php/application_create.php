@@ -87,21 +87,71 @@ if ($cgpa < $minimumCgpa || $backlogs > $maximumBacklogs) {
 // =====================================================
 // SAVE RESUME FILE
 // =====================================================
+
 $uploadDir = __DIR__ . "/../uploads/";
+
+// Create uploads directory if it does not exist
 if (!is_dir($uploadDir)) {
-    mkdir($uploadDir, 0777, true);
+
+    if (!mkdir($uploadDir, 0777, true)) {
+
+        echo json_encode([
+            "success" => false,
+            "message" => "Unable to create uploads folder."
+        ]);
+
+        exit;
+    }
 }
 
-$safeRoll = preg_replace("/[^A-Za-z0-9_-]/", "", $roll_number);
-$storedName = $safeRoll . "_" . time() . ".pdf";
-$destination = $uploadDir . $storedName;
 
-if (!move_uploaded_file($_FILES["resume"]["tmp_name"], $destination)) {
-    echo json_encode(["success" => false, "message" => "Failed to save resume file."]);
+// Check if folder is writable
+if (!is_writable($uploadDir)) {
+
+    echo json_encode([
+        "success" => false,
+        "message" => "Uploads folder is not writable."
+    ]);
+
     exit;
 }
 
-$resume = "uploads/" . $storedName;
+
+// Create safe filename
+$safeRoll = preg_replace(
+    "/[^A-Za-z0-9_-]/",
+    "",
+    $roll_number
+);
+
+$storedName =
+    $safeRoll . "_" . time() . ".pdf";
+
+
+$destination =
+    $uploadDir . $storedName;
+
+
+// Move uploaded PDF
+if (
+    !move_uploaded_file(
+        $_FILES["resume"]["tmp_name"],
+        $destination
+    )
+) {
+
+    echo json_encode([
+        "success" => false,
+        "message" => "Failed to save resume file."
+    ]);
+
+    exit;
+}
+
+
+// Path stored in database
+$resume =
+    "uploads/" . $storedName;
 
 // =====================================================
 // INSERT APPLICATION
