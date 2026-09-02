@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Officer Dashboard</title>
+<link rel="stylesheet" href="../css/officer.css">
+</head>
+<body>
+
+    <div class="topbar">
+        <h1>🧑‍💼 Officer Dashboard</h1>
+        <nav>
+            <a href="../index.html">Home</a>
+            <a href="create-drive.html">Add Drive</a>
+            <a href="manage-drives.html">Manage Drives</a>
+        </nav>
+    </div>
+
+    <div class="container">
+
+        <div class="stat-grid">
+            <div class="stat-card">
+                <div class="value" id="statTotalDrives">-</div>
+                <div class="label">Total Placement Drives</div>
+            </div>
+            <div class="stat-card">
+                <div class="value" id="statOpenDrives">-</div>
+                <div class="label">Open Drives</div>
+            </div>
+            <div class="stat-card">
+                <div class="value" id="statTotalApplications">-</div>
+                <div class="label">Total Applications</div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>Quick Actions</h2>
+            <p class="subtitle">Manage the placement process from here</p>
+            <a href="create-drive.html" class="btn btn-primary" style="margin-right:10px;">+ Create New Drive</a>
+            <a href="manage-drives.html" class="btn btn-secondary">View Drives &amp; Applications</a>
+        </div>
+
+    </div>
+
+<script src="../js/script.js"></script>
+<script>
+async function loadStats() {
+    try {
+        const driveRes = await fetch("../php/drive_read.php");
+        const driveJson = await driveRes.json();
+
+        const appRes = await fetch("../php/application_read.php");
+        const appJson = await appRes.json();
+
+        if (driveJson.success) {
+            const drives = driveJson.data;
+            document.querySelector("#statTotalDrives").textContent = drives.length;
+            document.querySelector("#statOpenDrives").textContent =
+                drives.filter(d => d.status === "Open").length;
+        }
+
+        if (appJson.success) {
+            document.querySelector("#statTotalApplications").textContent = appJson.data.length;
+        }
+    } catch (error) {
+        console.error("Error loading stats:", error);
+    }
+}
+
+document.addEventListener("DOMContentLoaded", loadStats);
+</script>
+</body>
+</html>

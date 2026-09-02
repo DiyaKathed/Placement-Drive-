@@ -1,0 +1,23 @@
+@import url("style.css");
+
+.topbar { background: #0f172a; }
+
+.drive-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 16px;
+}
+
+.drive-card {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 18px;
+    transition: all 0.15s ease;
+}
+
+.drive-card:hover { box-shadow: 0 6px 16px rgba(0,0,0,0.06); transform: translateY(-2px); }
+.drive-card h3 { font-size: 14.5px; margin-bottom: 4px; }
+.drive-card .role { color: #6b7280; font-size: 12px; margin-bottom: 10px; }
+.drive-card .meta { font-size: 11px; color: #374151; margin-bottom: 4px; }
+.drive-card .package { color: #16a34a; font-weight: 700; }

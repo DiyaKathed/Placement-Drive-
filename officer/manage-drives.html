@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Manage Drives &amp; Applications</title>
+<link rel="stylesheet" href="../css/officer.css">
+<style>
+.modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.45);
+    align-items: center;
+    justify-content: center;
+    z-index: 50;
+}
+.modal-overlay.open { display: flex; }
+.modal-box {
+    background: #fff;
+    border-radius: 10px;
+    padding: 24px;
+    width: 100%;
+    max-width: 560px;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+.modal-box h3 { margin-bottom: 14px; }
+</style>
+</head>
+<body>
+
+    <div class="topbar">
+        <h1>🧑‍💼 Officer Dashboard</h1>
+        <nav>
+            <a href="../index.html">Home</a>
+            <a href="officer-dashboard.html">Dashboard</a>
+            <a href="create-drive.html">Add Drive</a>
+        </nav>
+    </div>
+
+    <div class="container">
+
+        <!-- ================= DRIVES ================= -->
+        <div class="card">
+            <div class="table-header">
+                <div>
+                    <h2>Placement Drives</h2>
+                    <p class="subtitle">All drives stored in the MySQL database</p>
+                </div>
+                <a href="create-drive.html" class="btn btn-primary">+ Add Drive</a>
+            </div>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Company</th>
+                        <th>Role</th>
+                        <th>Package</th>
+                        <th>Branches</th>
+                        <th>Min CGPA</th>
+                        <th>Max Backlogs</th>
+                        <th>Date</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="driveTableBody"></tbody>
+            </table>
+            <div class="empty-state" id="driveEmptyState" style="display:none;">No placement drives yet.</div>
+        </div>
+
+        <!-- ================= APPLICATIONS ================= -->
+        <div class="card">
+            <div class="table-header">
+                <div>
+                    <h2>Applications</h2>
+                    <p class="subtitle">Students who have applied for placement drives</p>
+                </div>
+                <button type="button" id="highlightStrongBtn" class="highlight-btn">Highlight Strong Applicants</button>
+            </div>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>Student</th>
+                        <th>Roll No</th>
+                        <th>Company</th>
+                        <th>CGPA</th>
+                        <th>Percentage</th>
+                        <th>Backlogs</th>
+                        <th>Resume</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="applicationTableBody"></tbody>
+            </table>
+            <div class="empty-state" id="appEmptyState" style="display:none;">No applications yet.</div>
+        </div>
+
+    </div>
+
+    <!-- ================= EDIT DRIVE MODAL ================= -->
+    <div class="modal-overlay" id="editModal">
+        <div class="modal-box">
+            <h3>Edit Placement Drive</h3>
+            <form id="editDriveForm">
+                <input type="hidden" id="editId">
+                <div class="form-grid">
+
+                    <div class="form-group">
+                        <label>Company Name <span>*</span></label>
+                        <input type="text" id="editCompanyName">
+                        <small class="error-message"></small>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Job Role <span>*</span></label>
+                        <input type="text" id="editJobRole">
+                        <small class="error-message"></small>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Package (LPA) <span>*</span></label>
+                        <input type="number" id="editPackage" step="0.1">
+                        <small class="error-message"></small>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Drive Date <span>*</span></label>
+                        <input type="date" id="editDriveDate">
+                        <small class="error-message"></small>
+                    </div>
+
+                    <div class="form-group full">
+                        <label>Eligible Branches <span>*</span></label>
+                        <input type="text" id="editEligibleBranches">
+                        <small class="error-message"></small>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Minimum CGPA <span>*</span></label>
+                        <input type="number" id="editMinCgpa" step="0.1">
+                        <small class="error-message"></small>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Maximum Backlogs <span>*</span></label>
+                        <input type="number" id="editMaxBacklogs" step="1">
+                        <small class="error-message"></small>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Status</label>
+                        <select id="editStatus">
+                            <option value="Open">Open</option>
+                            <option value="Closed">Closed</option>
+                        </select>
+                        <small class="error-message"></small>
+                    </div>
+
+                </div>
+
+                <div class="validation-error" id="editFormError"></div>
+
+                <div style="margin-top:16px;">
+                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                    <button type="button" class="btn btn-secondary" id="closeModalBtn">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+<script src="../js/script.js"></script>
+<script>
+
+// =========================================================
+// LOAD DRIVES
+// =========================================================
+async function loadDrives() {
+    try {
+        const response = await fetch("../php/drive_read.php");
+        const result = await response.json();
+
+        const tableBody = document.querySelector("#driveTableBody");
+        const emptyState = document.querySelector("#driveEmptyState");
+        tableBody.innerHTML = "";
+
+        if (!result.success || result.data.length === 0) {
+            emptyState.style.display = "block";
+            return;
+        }
+        emptyState.style.display = "none";
+
+        result.data.forEach(function (drive) {
+            const row = document.createElement("tr");
+            row.innerHTML = `
+                <td>${drive.id}</td>
+                <td>${drive.company_name}</td>
+                <td>${drive.job_role}</td>
+                <td>₹${drive.package} LPA</td>
+                <td>${drive.eligible_branches}</td>
+                <td>${drive.min_cgpa}</td>
+                <td>${drive.max_backlogs}</td>
+                <td>${formatDate(drive.drive_date)}</td>
+                <td><span class="badge ${badgeClassForStatus(drive.status)}">${drive.status}</span></td>
+                <td>
+                    <button class="btn btn-sm btn-secondary" onclick="openEditModal(${drive.id})">Edit</button>
+                    <button class="btn btn-sm btn-danger" onclick="deleteDrive(${drive.id})">Delete</button>
+                </td>
+            `;
+            tableBody.appendChild(row);
+        });
+    } catch (error) {
+        console.error("Error loading drives:", error);
+    }
+}
+
+// =========================================================
+// DELETE DRIVE
+// =========================================================
+async function deleteDrive(id) {
+    const confirmed = confirm("Delete this placement drive? Its applications will also be removed.");
+    if (!confirmed) return;
+
+    try {
+        const response = await fetch("../php/drive_delete.php", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id })
+        });
+        const result = await response.json();
+
+        if (result.success) {
+            loadDrives();
+            loadApplications();
+        } else {
+            alert(result.message);
+        }
+    } catch (error) {
+        console.error(error);
+    }
+}
+
+// =========================================================
+// EDIT DRIVE MODAL
+// =========================================================
+const editModal = document.querySelector("#editModal");
+const editDriveForm = document.querySelector("#editDriveForm");
+
+async function openEditModal(id) {
+    try {
+        const response = await fetch("../php/drive_read.php?id=" + id);
+        const result = await response.json();
+
+        if (!result.success) {
+            alert("Could not load drive details.");
+            return;
+        }
+
+        const drive = result.data;
+        document.querySelector("#editId").value = drive.id;
+        document.querySelector("#editCompanyName").value = drive.company_name;
+        document.querySelector("#editJobRole").value = drive.job_role;
+        document.querySelector("#editPackage").value = drive.package;
+        document.querySelector("#editDriveDate").value = drive.drive_date;
+        document.querySelector("#editEligibleBranches").value = drive.eligible_branches;
+        document.querySelector("#editMinCgpa").value = drive.min_cgpa;
+        document.querySelector("#editMaxBacklogs").value = drive.max_backlogs;
+        document.querySelector("#editStatus").value = drive.status;
+
+        document.querySelectorAll("#editDriveForm input").forEach(resetField);
+        document.querySelector("#editFormError").style.display = "none";
+
+        editModal.classList.add("open");
+    } catch (error) {
+        console.error(error);
+    }
+}
+
+document.querySelector("#closeModalBtn").addEventListener("click", function () {
+    editModal.classList.remove("open");
+});
+
+editDriveForm.addEventListener("submit", async function (event) {
+    event.preventDefault();
+
+    const companyName = document.querySelector("#editCompanyName");
+    const jobRole = document.querySelector("#editJobRole");
+    const packageInput = document.querySelector("#editPackage");
+    const driveDate = document.querySelector("#editDriveDate");
+    const eligibleBranches = document.querySelector("#editEligibleBranches");
+    const minCgpa = document.querySelector("#editMinCgpa");
+    const maxBacklogs = document.querySelector("#editMaxBacklogs");
+
+    const companyValid = validateRequiredText(companyName, "Company Name");
+    const roleValid = validateRequiredText(jobRole, "Job Role");
+    const packageValid = validatePositiveNumber(packageInput, "Package");
+    const dateValid = validateDate(driveDate, "Drive Date");
+    const branchesValid = validateRequiredText(eligibleBranches, "Eligible Branches");
+    const cgpaValid = validateNumberRange(minCgpa, "Minimum CGPA", 0, 10);
+    const backlogValid = validateWholeNumber(maxBacklogs, "Maximum Backlogs", 0);
+
+    const errorBox = document.querySelector("#editFormError");
+    errorBox.style.display = "none";
+
+    if (!(companyValid && roleValid && packageValid && dateValid && branchesValid && cgpaValid && backlogValid)) {
+        return;
+    }
+
+    const driveData = {
+        id: document.querySelector("#editId").value,
+        company_name: companyName.value.trim(),
+        job_role: jobRole.value.trim(),
+        package: Number(packageInput.value),
+        eligible_branches: eligibleBranches.value.trim(),
+        min_cgpa: Number(minCgpa.value),
+        max_backlogs: Number(maxBacklogs.value),
+        drive_date: driveDate.value,
+        status: document.querySelector("#editStatus").value
+    };
+
+    try {
+        const response = await fetch("../php/drive_update.php", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(driveData)
+        });
+        const result = await response.json();
+
+        if (result.success) {
+            editModal.classList.remove("open");
+            loadDrives();
+        } else {
+            errorBox.textContent = result.message;
+            errorBox.style.display = "block";
+        }
+    } catch (error) {
+        errorBox.textContent = "Could not reach the server.";
+        errorBox.style.display = "block";
+    }
+});
+
+// =========================================================
+// LOAD APPLICATIONS
+// =========================================================
+async function loadApplications() {
+    try {
+        const response = await fetch("../php/application_read.php");
+        const result = await response.json();
+
+        const tableBody = document.querySelector("#applicationTableBody");
+        const emptyState = document.querySelector("#appEmptyState");
+        tableBody.innerHTML = "";
+
+        if (!result.success || result.data.length === 0) {
+            emptyState.style.display = "block";
+            return;
+        }
+        emptyState.style.display = "none";
+
+        result.data.forEach(function (app) {
+            const row = document.createElement("tr");
+            row.dataset.cgpa = app.cgpa;
+            row.dataset.minCgpa = app.min_cgpa;
+
+            row.innerHTML = `
+                <td>${app.student_name}</td>
+                <td>${app.roll_number}</td>
+                <td>${app.company_name}</td>
+                <td><strong>${app.cgpa}</strong></td>
+                <td>${app.percentage}%</td>
+                <td>${app.backlogs}</td>
+                <td><a href="../${app.resume}" target="_blank">View</a></td>
+                <td>
+                    <select onchange="updateApplicationStatus(${app.id}, this.value)">
+                        <option value="Applied" ${app.status === "Applied" ? "selected" : ""}>Applied</option>
+                        <option value="Shortlisted" ${app.status === "Shortlisted" ? "selected" : ""}>Shortlisted</option>
+                        <option value="Rejected" ${app.status === "Rejected" ? "selected" : ""}>Rejected</option>
+                    </select>
+                </td>
+                <td>
+                    <button class="btn btn-sm btn-danger" onclick="deleteApplication(${app.id})">Delete</button>
+                </td>
+            `;
+            tableBody.appendChild(row);
+        });
+
+        if (highlightingEnabled) applyHighlighting();
+    } catch (error) {
+        console.error("Error loading applications:", error);
+    }
+}
+
+async function updateApplicationStatus(id, status) {
+    try {
+        const response = await fetch("../php/application_update.php", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id, status })
+        });
+        const result = await response.json();
+        if (!result.success) alert(result.message);
+    } catch (error) {
+        console.error(error);
+    }
+}
+
+async function deleteApplication(id) {
+    const confirmed = confirm("Delete this application?");
+    if (!confirmed) return;
+
+    try {
+        const response = await fetch("../php/application_delete.php", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id })
+        });
+        const result = await response.json();
+
+        if (result.success) {
+            loadApplications();
+        } else {
+            alert(result.message);
+        }
+    } catch (error) {
+        console.error(error);
+    }
+}
+
+// =========================================================
+// BONUS: HIGHLIGHT STRONG APPLICANTS (CGPA >= min_cgpa + 0.5)
+// =========================================================
+let highlightingEnabled = false;
+const highlightStrongBtn = document.querySelector("#highlightStrongBtn");
+
+function applyHighlighting() {
+    const rows = document.querySelectorAll("#applicationTableBody tr");
+
+    rows.forEach(function (row) {
+        const studentCgpa = Number(row.dataset.cgpa);
+        const minimumCgpa = Number(row.dataset.minCgpa);
+        const isStrongApplicant = studentCgpa >= minimumCgpa + 0.5;
+
+        const studentCell = row.querySelector("td");
+        const existingBadge = studentCell ? studentCell.querySelector(".strong-badge") : null;
+
+        if (highlightingEnabled && isStrongApplicant) {
+            row.classList.add("strong-applicant");
+            if (studentCell && !existingBadge) {
+                const badge = document.createElement("span");
+                badge.className = "strong-badge";
+                badge.textContent = "Strong Applicant";
+                studentCell.appendChild(badge);
+            }
+        } else {
+            row.classList.remove("strong-applicant");
+            if (existingBadge) existingBadge.remove();
+        }
+    });
+}
+
+highlightStrongBtn.addEventListener("click", function () {
+    highlightingEnabled = !highlightingEnabled;
+    applyHighlighting();
+    highlightStrongBtn.textContent = highlightingEnabled ? "Remove Highlights" : "Highlight Strong Applicants";
+});
+
+document.addEventListener("DOMContentLoaded", function () {
+    loadDrives();
+    loadApplications();
+});
+</script>
+</body>
+</html>

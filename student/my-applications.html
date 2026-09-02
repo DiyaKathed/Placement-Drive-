@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>My Applications</title>
+<link rel="stylesheet" href="../css/student.css">
+</head>
+<body>
+
+    <div class="topbar">
+        <h1>🎓 Student Portal</h1>
+        <nav>
+            <a href="../index.html">Home</a>
+            <a href="student-dashboard.html">Browse Drives</a>
+        </nav>
+    </div>
+
+    <div class="container">
+
+        <div class="card">
+            <h2>My Applications</h2>
+            <p class="subtitle">Enter your roll number to view the drives you've applied to</p>
+
+            <div class="form-group" style="max-width:320px;">
+                <label for="searchRoll">Roll Number</label>
+                <input type="text" id="searchRoll" placeholder="e.g. CS2023045">
+                <small class="error-message"></small>
+            </div>
+            <button type="button" class="btn btn-primary" id="searchBtn">Search</button>
+        </div>
+
+        <div class="card" id="resultsCard" style="display:none;">
+            <h2>Results</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Company</th>
+                        <th>Role</th>
+                        <th>CGPA</th>
+                        <th>Percentage</th>
+                        <th>Backlogs</th>
+                        <th>Resume</th>
+                        <th>Applied On</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody id="resultsBody"></tbody>
+            </table>
+            <div class="empty-state" id="noResults" style="display:none;">No applications found for this roll number.</div>
+        </div>
+
+    </div>
+
+<script src="../js/script.js"></script>
+<script>
+const searchRoll = document.querySelector("#searchRoll");
+const searchBtn = document.querySelector("#searchBtn");
+
+searchBtn.addEventListener("click", async function () {
+    const rollValid = validateRequiredText(searchRoll, "Roll Number", 1);
+    if (!rollValid) return;
+
+    try {
+        const response = await fetch("../php/application_read.php?roll_number=" + encodeURIComponent(searchRoll.value.trim()));
+        const result = await response.json();
+
+        const resultsCard = document.querySelector("#resultsCard");
+        const resultsBody = document.querySelector("#resultsBody");
+        const noResults = document.querySelector("#noResults");
+
+        resultsCard.style.display = "block";
+        resultsBody.innerHTML = "";
+
+        if (!result.success || result.data.length === 0) {
+            noResults.style.display = "block";
+            return;
+        }
+        noResults.style.display = "none";
+
+        result.data.forEach(function (app) {
+            const row = document.createElement("tr");
+            row.innerHTML = `
+                <td>${app.company_name}</td>
+                <td>${app.job_role}</td>
+                <td>${app.cgpa}</td>
+                <td>${app.percentage}%</td>
+                <td>${app.backlogs}</td>
+                <td><a href="../${app.resume}" target="_blank">View</a></td>
+                <td>${formatDate(app.applied_at)}</td>
+                <td><span class="badge ${badgeClassForStatus(app.status)}">${app.status}</span></td>
+            `;
+            resultsBody.appendChild(row);
+        });
+    } catch (error) {
+        console.error(error);
+    }
+});
+
+searchRoll.addEventListener("keydown", function (event) {
+    if (event.key === "Enter") searchBtn.click();
+});
+</script>
+</body>
+</html>

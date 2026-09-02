@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Drive Details</title>
+<link rel="stylesheet" href="../css/student.css">
+</head>
+<body>
+
+    <div class="topbar">
+        <h1>🎓 Student Portal</h1>
+        <nav>
+            <a href="../index.html">Home</a>
+            <a href="student-dashboard.html">Browse Drives</a>
+            <a href="my-applications.html">My Applications</a>
+        </nav>
+    </div>
+
+    <div class="container">
+
+        <div class="card" id="driveInfoCard">
+            <h2 id="driveTitle">Loading...</h2>
+            <p class="subtitle" id="driveSubtitle"></p>
+            <div id="driveMeta"></div>
+        </div>
+
+        <div class="card">
+            <h2>Apply for this Drive</h2>
+            <p class="subtitle">Errors appear next to each field — no popups. Your eligibility is checked before submission.</p>
+
+            <form id="applicationForm" novalidate>
+                <input type="hidden" id="driveId">
+
+                <div class="form-grid">
+
+                    <div class="form-group">
+                        <label for="studentName">Full Name <span>*</span></label>
+                        <input type="text" id="studentName" placeholder="Your full name">
+                        <small class="error-message"></small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="rollNumber">Roll Number <span>*</span></label>
+                        <input type="text" id="rollNumber" placeholder="e.g. CS2023045">
+                        <small class="error-message"></small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="batch">Batch <span>*</span></label>
+                        <input type="text" id="batch" placeholder="e.g. 2026">
+                        <small class="error-message"></small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="category">Category <span>*</span></label>
+                        <select id="category">
+                            <option value="">Select category</option>
+                            <option value="General">General</option>
+                            <option value="OBC">OBC</option>
+                            <option value="SC">SC</option>
+                            <option value="ST">ST</option>
+                            <option value="EWS">EWS</option>
+                        </select>
+                        <small class="error-message"></small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="studentCgpa">CGPA <span>*</span></label>
+                        <input type="number" id="studentCgpa" placeholder="e.g. 8.2" step="0.01">
+                        <small class="error-message"></small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="percentage">Percentage / Marks <span>*</span></label>
+                        <input type="number" id="percentage" placeholder="e.g. 78.5" step="0.1">
+                        <small class="error-message"></small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="studentBacklogs">Backlogs <span>*</span></label>
+                        <input type="number" id="studentBacklogs" placeholder="e.g. 0" step="1">
+                        <small class="error-message"></small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="resume">Resume (PDF) <span>*</span></label>
+                        <input type="file" id="resume" accept=".pdf,application/pdf">
+                        <small class="error-message"></small>
+                    </div>
+
+                </div>
+
+                <div style="margin-top:18px;">
+                    <button type="submit" class="btn btn-primary">Submit Application</button>
+                    <a href="student-dashboard.html" class="btn btn-secondary">Back to Drives</a>
+                </div>
+
+                <div class="eligibility-result" id="eligibilityResult"></div>
+
+            </form>
+        </div>
+
+    </div>
+
+<script src="../js/script.js"></script>
+<script>
+const params = new URLSearchParams(window.location.search);
+const driveId = params.get("id");
+document.querySelector("#driveId").value = driveId;
+
+async function loadDrive() {
+    if (!driveId) {
+        document.querySelector("#driveTitle").textContent = "No drive selected";
+        return;
+    }
+
+    try {
+        const response = await fetch("../php/drive_read.php?id=" + driveId);
+        const result = await response.json();
+
+        if (!result.success) {
+            document.querySelector("#driveTitle").textContent = "Drive not found";
+            return;
+        }
+
+        const drive = result.data;
+        document.querySelector("#driveTitle").textContent = drive.company_name + " — " + drive.job_role;
+        document.querySelector("#driveSubtitle").textContent = "Package: ₹" + drive.package + " LPA  |  Drive Date: " + formatDate(drive.drive_date);
+        document.querySelector("#driveMeta").innerHTML = `
+            <p class="meta">Eligible Branches: <strong>${drive.eligible_branches}</strong></p>
+            <p class="meta">Minimum CGPA: <strong>${drive.min_cgpa}</strong></p>
+            <p class="meta">Maximum Backlogs Allowed: <strong>${drive.max_backlogs}</strong></p>
+            <p class="meta">Status: <span class="badge ${badgeClassForStatus(drive.status)}">${drive.status}</span></p>
+        `;
+    } catch (error) {
+        console.error(error);
+    }
+}
+
+document.addEventListener("DOMContentLoaded", loadDrive);
+
+// =========================================================
+// APPLICATION FORM VALIDATION + SUBMISSION
+// =========================================================
+const applicationForm = document.querySelector("#applicationForm");
+
+const studentName = document.querySelector("#studentName");
+const rollNumber = document.querySelector("#rollNumber");
+const batch = document.querySelector("#batch");
+const category = document.querySelector("#category");
+const studentCgpa = document.querySelector("#studentCgpa");
+const percentage = document.querySelector("#percentage");
+const studentBacklogs = document.querySelector("#studentBacklogs");
+const resume = document.querySelector("#resume");
+
+applicationForm.addEventListener("submit", async function (event) {
+    event.preventDefault();
+
+    const nameValid = validateRequiredText(studentName, "Full Name");
+    const rollValid = validateRequiredText(rollNumber, "Roll Number", 1);
+    const batchValid = validateRequiredText(batch, "Batch", 1);
+    const categoryValid = validateSelect(category, "Category");
+    const cgpaValid = validateNumberRange(studentCgpa, "CGPA", 0, 10);
+    const percentageValid = validateNumberRange(percentage, "Percentage", 0, 100);
+    const backlogValid = validateWholeNumber(studentBacklogs, "Backlogs", 0);
+    const resumeValid = validatePdfFile(resume);
+
+    const resultBox = document.querySelector("#eligibilityResult");
+    resultBox.className = "eligibility-result";
+    resultBox.textContent = "";
+
+    if (!(nameValid && rollValid && batchValid && categoryValid && cgpaValid && percentageValid && backlogValid && resumeValid)) {
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append("drive_id", driveId);
+    formData.append("student_name", studentName.value.trim());
+    formData.append("roll_number", rollNumber.value.trim());
+    formData.append("batch", batch.value.trim());
+    formData.append("category", category.value);
+    formData.append("cgpa", studentCgpa.value);
+    formData.append("percentage", percentage.value);
+    formData.append("backlogs", studentBacklogs.value);
+    formData.append("resume", resume.files[0]);
+
+    try {
+        const response = await fetch("../php/application_create.php", {
+            method: "POST",
+            body: formData
+        });
+        const result = await response.json();
+
+        if (result.success) {
+            resultBox.classList.add("eligible");
+            resultBox.textContent = "✓ " + result.message;
+            applicationForm.reset();
+            document.querySelectorAll("#applicationForm input, #applicationForm select").forEach(resetField);
+        } else {
+            resultBox.classList.add("not-eligible");
+            resultBox.textContent = "✕ " + result.message;
+        }
+    } catch (error) {
+        resultBox.classList.add("not-eligible");
+        resultBox.textContent = "✕ Could not reach the server. Is XAMPP running?";
+    }
+});
+</script>
+</body>
+</html>

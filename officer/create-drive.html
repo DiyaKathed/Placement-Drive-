@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Create Placement Drive</title>
+<link rel="stylesheet" href="../css/officer.css">
+</head>
+<body>
+
+    <div class="topbar">
+        <h1>🧑‍💼 Officer Dashboard</h1>
+        <nav>
+            <a href="../index.html">Home</a>
+            <a href="officer-dashboard.html">Dashboard</a>
+            <a href="manage-drives.html">Manage Drives</a>
+        </nav>
+    </div>
+
+    <div class="container">
+
+        <div class="card">
+            <h2>Create Placement Drive</h2>
+            <p class="subtitle">Fill in the details below. Errors appear next to each field — no popups.</p>
+
+            <form id="driveForm" novalidate>
+                <div class="form-grid">
+
+                    <div class="form-group">
+                        <label for="companyName">Company Name <span>*</span></label>
+                        <input type="text" id="companyName" placeholder="e.g. TCS">
+                        <small class="error-message"></small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="jobRole">Job Role <span>*</span></label>
+                        <input type="text" id="jobRole" placeholder="e.g. Software Developer">
+                        <small class="error-message"></small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="package">Package (LPA) <span>*</span></label>
+                        <input type="number" id="package" placeholder="e.g. 7" step="0.1">
+                        <small class="error-message"></small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="driveDate">Drive Date <span>*</span></label>
+                        <input type="date" id="driveDate">
+                        <small class="error-message"></small>
+                    </div>
+
+                    <div class="form-group full">
+                        <label for="eligibleBranches">Eligible Branches <span>*</span></label>
+                        <input type="text" id="eligibleBranches" placeholder="e.g. Computer, IT, ENTC">
+                        <small class="error-message"></small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="minCgpa">Minimum CGPA <span>*</span></label>
+                        <input type="number" id="minCgpa" placeholder="e.g. 7.0" step="0.1">
+                        <small class="error-message"></small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="maxBacklogs">Maximum Backlogs <span>*</span></label>
+                        <input type="number" id="maxBacklogs" placeholder="e.g. 2" step="1">
+                        <small class="error-message"></small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="status">Status</label>
+                        <select id="status">
+                            <option value="Open">Open</option>
+                            <option value="Closed">Closed</option>
+                        </select>
+                        <small class="error-message"></small>
+                    </div>
+
+                </div>
+
+                <div style="margin-top:18px;">
+                    <button type="submit" class="btn btn-primary">Create Drive</button>
+                    <a href="manage-drives.html" class="btn btn-secondary">Cancel</a>
+                </div>
+
+                <div class="success-message" id="successMessage"></div>
+                <div class="validation-error" id="formError"></div>
+
+            </form>
+        </div>
+
+    </div>
+
+<script src="../js/script.js"></script>
+<script>
+const driveForm = document.querySelector("#driveForm");
+const companyName = document.querySelector("#companyName");
+const jobRole = document.querySelector("#jobRole");
+const packageInput = document.querySelector("#package");
+const driveDate = document.querySelector("#driveDate");
+const eligibleBranches = document.querySelector("#eligibleBranches");
+const minCgpa = document.querySelector("#minCgpa");
+const maxBacklogs = document.querySelector("#maxBacklogs");
+
+driveForm.addEventListener("submit", async function (event) {
+    event.preventDefault();
+
+    const companyValid = validateRequiredText(companyName, "Company Name");
+    const roleValid = validateRequiredText(jobRole, "Job Role");
+    const packageValid = validatePositiveNumber(packageInput, "Package");
+    const dateValid = validateDate(driveDate, "Drive Date");
+    const branchesValid = validateRequiredText(eligibleBranches, "Eligible Branches");
+    const cgpaValid = validateNumberRange(minCgpa, "Minimum CGPA", 0, 10);
+    const backlogValid = validateWholeNumber(maxBacklogs, "Maximum Backlogs", 0);
+
+    const successBox = document.querySelector("#successMessage");
+    const errorBox = document.querySelector("#formError");
+    successBox.style.display = "none";
+    errorBox.style.display = "none";
+
+    if (!(companyValid && roleValid && packageValid && dateValid && branchesValid && cgpaValid && backlogValid)) {
+        return;
+    }
+
+    const driveData = {
+        company_name: companyName.value.trim(),
+        job_role: jobRole.value.trim(),
+        package: Number(packageInput.value),
+        eligible_branches: eligibleBranches.value.trim(),
+        min_cgpa: Number(minCgpa.value),
+        max_backlogs: Number(maxBacklogs.value),
+        drive_date: driveDate.value,
+        status: document.querySelector("#status").value
+    };
+
+    try {
+        const response = await fetch("../php/drive_create.php", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(driveData)
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            successBox.textContent = result.message + " Redirecting...";
+            successBox.style.display = "block";
+            driveForm.reset();
+            setTimeout(() => { window.location.href = "manage-drives.html"; }, 900);
+        } else {
+            errorBox.textContent = result.message;
+            errorBox.style.display = "block";
+        }
+    } catch (error) {
+        errorBox.textContent = "Could not reach the server. Is XAMPP running?";
+        errorBox.style.display = "block";
+    }
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Student Dashboard</title>
+<link rel="stylesheet" href="../css/student.css">
+</head>
+<body>
+
+    <div class="topbar">
+        <h1>🎓 Student Portal</h1>
+        <nav>
+            <a href="../index.html">Home</a>
+            <a href="my-applications.html">My Applications</a>
+        </nav>
+    </div>
+
+    <div class="container">
+
+        <div class="card">
+            <h2>Open Placement Drives</h2>
+            <p class="subtitle">Browse companies currently hiring and check your eligibility</p>
+        </div>
+
+        <div class="drive-grid" id="driveGrid"></div>
+        <div class="empty-state" id="emptyState" style="display:none;">No open placement drives right now. Check back later.</div>
+
+    </div>
+
+<script src="../js/script.js"></script>
+<script>
+async function loadOpenDrives() {
+    try {
+        const response = await fetch("../php/drive_read.php?status=Open");
+        const result = await response.json();
+
+        const grid = document.querySelector("#driveGrid");
+        const emptyState = document.querySelector("#emptyState");
+        grid.innerHTML = "";
+
+        if (!result.success || result.data.length === 0) {
+            emptyState.style.display = "block";
+            return;
+        }
+        emptyState.style.display = "none";
+
+        result.data.forEach(function (drive) {
+            const card = document.createElement("div");
+            card.className = "drive-card";
+            card.innerHTML = `
+                <h3>${drive.company_name}</h3>
+                <p class="role">${drive.job_role}</p>
+                <p class="meta">Package: <span class="package">₹${drive.package} LPA</span></p>
+                <p class="meta">Eligible Branches: ${drive.eligible_branches}</p>
+                <p class="meta">Min CGPA: ${drive.min_cgpa} &nbsp;|&nbsp; Max Backlogs: ${drive.max_backlogs}</p>
+                <p class="meta">Drive Date: ${formatDate(drive.drive_date)}</p>
+                <a href="drive-details.html?id=${drive.id}" class="btn btn-primary" style="margin-top:10px;">View &amp; Apply</a>
+            `;
+            grid.appendChild(card);
+        });
+    } catch (error) {
+        console.error("Error loading drives:", error);
+    }
+}
+
+document.addEventListener("DOMContentLoaded", loadOpenDrives);
+</script>
+</body>
+</html>
